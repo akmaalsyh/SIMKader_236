@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    // Plugin untuk database Room (KSP) dan Retrofit (Serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -49,6 +52,26 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+
+    implementation(libs.compose.icons) // Untuk ikon navigasi dan CRUD [cite: 687, 705]
+
+    // --- NAVIGASI ---
+    implementation(libs.navigation.compose) // Untuk mengatur alur antar halaman [cite: 486]
+
+    // --- VIEWMODEL & LIFECYCLE (MVVM) ---
+    implementation(libs.lifecycle.viewmodel.compose) // [cite: 536, 562]
+    implementation(libs.lifecycle.runtime.compose)
+
+    // --- DATABASE LOKAL (ROOM - HYBRID) ---
+    implementation(libs.bundles.room) // Menggunakan bundle yang kita buat di toml [cite: 301]
+    ksp(libs.room.compiler) // Processor untuk Room
+
+    // --- NETWORKING (MYSQL - HYBRID) ---
+    implementation(libs.retrofit.serialization) // Converter JSON untuk Retrofit [cite: 306, 307]
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging) // Penting untuk melihat log data MySQL
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
