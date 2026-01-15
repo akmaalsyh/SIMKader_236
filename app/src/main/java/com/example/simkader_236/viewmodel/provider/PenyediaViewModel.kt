@@ -10,6 +10,10 @@ import com.example.simkader_236.viewmodel.HomeViewModel
 import com.example.simkader_236.viewmodel.EntryViewModel
 import com.example.simkader_236.viewmodel.DetailViewModel
 import com.example.simkader_236.viewmodel.EditViewModel
+import com.example.simkader_236.viewmodel.GrafikKaderViewModel
+import com.example.simkader_236.viewmodel.ListKaderViewModel
+import com.example.simkader_236.viewmodel.LoginViewModel
+import com.example.simkader_236.viewmodel.RegisterViewModel
 
 object PenyediaViewModel {
     val Factory = viewModelFactory {
@@ -42,6 +46,25 @@ object PenyediaViewModel {
                 aplikasiDataKader().container.repositoriDataKader
             )
         }
+
+        // Initializer untuk LoginViewModel
+        initializer {
+            LoginViewModel(aplikasiDataKader().container.repositoriDataKader)
+        }
+
+        // Initializer untuk RegisterViewModel
+        initializer {
+            RegisterViewModel(aplikasiDataKader().container.repositoriDataKader)
+        }
+
+        // Tambahkan di dalam initializer PenyediaViewModel
+        initializer {
+            ListKaderViewModel(aplikasiDataKader().container.repositoriDataKader)
+        }
+        initializer {
+            GrafikKaderViewModel(aplikasiDataKader().container.repositoriDataKader)
+        }
+
     }
 }
 
