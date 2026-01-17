@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HalamanHome(
     role: String,
-    username: String,
+    username: String, // Variabel ini sekarang berisi Nama Lengkap dari PetaNavigasi
     onAddClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onNavToList: () -> Unit,
@@ -50,19 +50,41 @@ fun HalamanHome(
     val warnaMerahTua = Color(0xFFB71C1C)
     val warnaMerahMuda = Color(0xFFFFEBEE)
 
-    // --- STATE UNTUK SCROLL ---
     val scrollState = rememberScrollState()
+    val isScrolled by remember { derivedStateOf { scrollState.value > 100 } }
 
-    // Logika untuk menentukan apakah user sudah scroll kebawah atau belum
-    val isScrolled by remember {
-        derivedStateOf { scrollState.value > 100 }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    // ALERT DIALOG LOGOUT
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Konfirmasi Keluar", fontWeight = FontWeight.Bold) },
+            text = { Text("Apakah Anda yakin ingin keluar dari sistem SIM-KADER?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogoutClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = warnaMerahTua)
+                ) {
+                    Text("Keluar", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Batal", color = Color.Gray)
+                }
+            }
+        )
     }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                // ... (Isi Drawer tetap sama seperti sebelumnya)
+                // 1. HEADER DRAWER (Profil User)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -72,13 +94,15 @@ fun HalamanHome(
                     Column {
                         Icon(Icons.Default.AccountCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(64.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        Text(text = "Role: $role", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                        // Menampilkan Nama Lengkap Kader
+                        Text(text = username, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(text = role, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // 2. MENU NAVIGASI UTAMA
                 NavigationDrawerItem(
                     label = { Text("List Kader") },
                     selected = false,
@@ -92,13 +116,22 @@ fun HalamanHome(
                     onClick = { scope.launch { drawerState.close() }; onNavToGrafik() }
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                // --- REVISI: DORONG LOGOUT KE BAWAH ---
+                // Spacer dengan weight(1f) akan mengambil semua sisa ruang kosong
+                Spacer(modifier = Modifier.weight(1f))
 
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp))
+
+                // 3. MENU LOGOUT DI PALING BAWAH
                 NavigationDrawerItem(
-                    label = { Text("Logout") },
+                    label = { Text("Logout", color = Color.Red, fontWeight = FontWeight.Bold) },
                     selected = false,
-                    icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
-                    onClick = onLogoutClick
+                    icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = Color.Red) },
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        showLogoutDialog = true
+                    },
+                    modifier = Modifier.padding(bottom = 16.dp) // Memberi jarak dari tepi bawah layar
                 )
             }
         }
@@ -113,31 +146,25 @@ fun HalamanHome(
                         }
                     },
                     actions = {
-                        IconButton(onClick = onLogoutClick) {
+                        IconButton(onClick = { showLogoutDialog = true }) {
                             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = warnaMerahTua)
                 )
             },
-            // --- MENAMBAHKAN TOMBOL SCROLL OTOMATIS ---
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = {
                         scope.launch {
-                            // Jika sudah di bawah, scroll ke atas. Jika di atas, scroll ke bawah.
-                            if (isScrolled) {
-                                scrollState.animateScrollTo(0)
-                            } else {
-                                scrollState.animateScrollTo(scrollState.maxValue)
-                            }
+                            if (isScrolled) scrollState.animateScrollTo(0)
+                            else scrollState.animateScrollTo(scrollState.maxValue)
                         }
                     },
                     containerColor = warnaMerahTua,
                     contentColor = Color.White,
                     shape = androidx.compose.foundation.shape.CircleShape
                 ) {
-                    // Ikon berubah sesuai posisi scroll
                     Icon(
                         imageVector = if (isScrolled) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = "Scroll"
@@ -149,19 +176,18 @@ fun HalamanHome(
                 modifier = modifier
                     .padding(innerPadding)
                     .fillMaxSize()
-                    .verticalScroll(scrollState) // Menggunakan scrollState yang didefinisikan di atas
+                    .verticalScroll(scrollState)
             ) {
-                // --- HERO SECTION DENGAN BINGKAI & SHADOW ---
+                // --- HERO SECTION ---
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp)
-                        .padding(horizontal = 16.dp, vertical = 8.dp), // Memberi jarak agar shadow terlihat
-                    shape = RoundedCornerShape(16.dp), // Sudut melengkung agar modern
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // Efek bayangan/shadow
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Gambar Utama
                         Image(
                             painter = painterResource(id = R.drawable.gambar_imm),
                             contentDescription = null,
@@ -169,15 +195,6 @@ fun HalamanHome(
                             modifier = Modifier.fillMaxSize()
                         )
 
-                        // Bingkai Halus (Border) di atas gambar
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(16.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
-                        ) {}
-
-                        // Gradient Overlay agar teks terbaca jelas
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -188,7 +205,6 @@ fun HalamanHome(
                                 )
                         )
 
-                        // Teks Salam
                         Column(
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
@@ -200,6 +216,7 @@ fun HalamanHome(
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Light
                             )
+                            // MENAMPILKAN NAMA LENGKAP DENGAN HURUF KAPITAL
                             Text(
                                 text = username.uppercase(),
                                 color = Color.White,
@@ -211,7 +228,6 @@ fun HalamanHome(
                 }
 
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // --- DESKRIPSI RINGKAS & MEWAKILI SEMUA ---
                     Text(
                         text = "Tentang SIM-KADER IMM FT",
                         fontWeight = FontWeight.Bold,
@@ -223,7 +239,7 @@ fun HalamanHome(
                         text = "SIM-KADER merupakan platform integrasi data bagi Ikatan Mahasiswa Muhammadiyah (IMM) Fakultas Teknik UMY. Aplikasi ini dirancang untuk mengelola data perkaderan secara digital demi mewujudkan tata kelola organisasi yang modern, transparan, dan berkelanjutan bagi seluruh kader cendekiawan berpribadi.",
                         fontSize = 13.sp,
                         textAlign = TextAlign.Justify,
-                        lineHeight = 20.sp, // Jarak antar baris sedikit lebih lebar agar lebih enak dibaca
+                        lineHeight = 20.sp,
                         color = Color.DarkGray
                     )
 
@@ -282,8 +298,6 @@ fun HalamanHome(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
-
                     Spacer(modifier = Modifier.height(64.dp))
 
                     HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
@@ -310,6 +324,7 @@ fun HalamanHome(
     }
 }
 
+// Komponen tombol tetap sama
 @Composable
 fun DashboardButton(
     title: String,

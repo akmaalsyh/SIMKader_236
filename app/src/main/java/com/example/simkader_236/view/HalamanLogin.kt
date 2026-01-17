@@ -127,12 +127,12 @@ fun HalamanLogin(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Tombol Login Utama
+                // --- REVISI: PASTIKAN PARAMETER SINKRON DENGAN DATA DARI SERVER ---
                 Button(
                     onClick = {
-                        // REVISI: Kirim role dan username saat login berhasil
-                        viewModel.login { role ->
-                            onLoginSuccess(role, viewModel.username)
+                        viewModel.login { roleFromServer, usernameFromServer ->
+                            // roleFromServer di sini harus berisi "user" sesuai log
+                            onLoginSuccess(roleFromServer, usernameFromServer)
                         }
                     },
                     modifier = Modifier

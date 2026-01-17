@@ -7,19 +7,28 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.simkader_236.repositori.RepositoriDataKader
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class RegisterViewModel(private val repositori: RepositoriDataKader) : ViewModel() {
+
+    var namaLengkap by mutableStateOf("")
     var username by mutableStateOf("")
     var password by mutableStateOf("")
-    var confirmPassword by mutableStateOf("") // Ini harus ada!
+    var confirmPassword by mutableStateOf("")
+
     var isLoading by mutableStateOf(false)
     var registerError by mutableStateOf<String?>(null)
 
-    // Di dalam RegisterViewModel.kt
     fun register(onSuccess: () -> Unit) {
-        // Validasi internal sebelum tembak API
+        // 1. Validasi kecocokan password di sisi Client
         if (password != confirmPassword) {
-            registerError = "Password tidak cocok!"
+            registerError = "Konfirmasi password tidak cocok!"
+            return
+        }
+
+        // 2. Validasi kolom tidak boleh kosong
+        if (namaLengkap.isBlank() || username.isBlank() || password.isBlank()) {
+            registerError = "Semua kolom harus diisi!"
             return
         }
 
@@ -27,16 +36,28 @@ class RegisterViewModel(private val repositori: RepositoriDataKader) : ViewModel
             isLoading = true
             registerError = null
             try {
-                val response = repositori.register(
-                    mapOf("username" to username, "password" to password, "role" to "user")
+                val dataRegister = mapOf(
+                    "nama" to namaLengkap.trim(),
+                    "username" to username.trim(),
+                    "password" to password,
+                    "role" to "user"
                 )
-                // Log untuk debug di Logcat
-                println("Response Register: ${response.code()}")
+
+                val response = repositori.register(dataRegister)
 
                 if (response.isSuccessful) {
+                    // Berhasil mendaftar (Status 201)
                     onSuccess()
                 } else {
-                    registerError = "Username sudah terdaftar!"
+                    // REVISI: Mengambil pesan error JSON dari PHP (Status 409 atau 400)
+                    val errorJson = response.errorBody()?.string()
+                    val message = try {
+                        // Mencari teks di dalam JSON: {"message":"..."}
+                        JSONObject(errorJson ?: "").getString("message")
+                    } catch (e: Exception) {
+                        "Pendaftaran gagal, silakan coba lagi."
+                    }
+                    registerError = message
                 }
             } catch (e: Exception) {
                 registerError = "Koneksi Gagal: ${e.message}"

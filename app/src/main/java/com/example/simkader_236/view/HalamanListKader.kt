@@ -6,12 +6,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,9 +39,8 @@ fun HalamanListKader(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val uiState = viewModel.listUiState
-    val warnaUtama = Color(0xFFB71C1C)
+    val warnaUtama = Color(0xFFB71C1C) // Merah Maroon IMM
 
-    // State untuk Scroll & Pull to Refresh
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var isRefreshing by remember { mutableStateOf(false) }
@@ -62,15 +61,17 @@ fun HalamanListKader(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = warnaUtama)
             )
         },
+        // --- LOGIKA FLOATING ACTION BUTTON (FAB) ---
         floatingActionButton = {
+            // Tombol tambah hanya muncul jika login sebagai admin
             if (role == "admin") {
                 FloatingActionButton(
                     onClick = onAddClick,
                     containerColor = warnaUtama,
                     contentColor = Color.White,
-                    shape = RoundedCornerShape(16.dp)
+                    shape = CircleShape // Menggunakan bentuk bulat agar lebih standar
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Tambah")
+                    Icon(Icons.Default.Add, contentDescription = "Tambah Kader")
                 }
             }
         }
@@ -108,14 +109,13 @@ fun HalamanListKader(
                 )
             }
 
-            // --- PULL TO REFRESH BOX ---
             PullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = {
                     scope.launch {
                         isRefreshing = true
-                        viewModel.getAllKader() // Mengambil data ulang dari API
-                        delay(1000) // Memberi jeda visual sedikit
+                        viewModel.getAllKader()
+                        delay(1000)
                         isRefreshing = false
                     }
                 },
@@ -137,7 +137,7 @@ fun HalamanListKader(
                                 LazyColumn(
                                     state = listState,
                                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                                    contentPadding = PaddingValues(bottom = 80.dp)
+                                    contentPadding = PaddingValues(bottom = 80.dp) // Jarak agar tidak tertutup FAB
                                 ) {
                                     items(filteredList) { kader ->
                                         CardKader(
@@ -151,13 +151,15 @@ fun HalamanListKader(
                         is HomeUiState.Error -> Text("Gagal memuat data", modifier = Modifier.align(Alignment.Center))
                     }
 
-                    // Quick Scroll Up Button
-                    val showButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
+                    // Quick Scroll Up Button (Opsional jika FAB tambah sudah ada)
+                    val showButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 1 } }
                     if (showButton) {
                         SmallFloatingActionButton(
                             onClick = { scope.launch { listState.animateScrollToItem(0) } },
-                            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp),
-                            containerColor = warnaUtama,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 16.dp, bottom = 80.dp), // Ditaruh di atas FAB utama
+                            containerColor = Color.Gray.copy(alpha = 0.6f),
                             contentColor = Color.White
                         ) {
                             Icon(Icons.Default.KeyboardArrowUp, contentDescription = null)
@@ -179,13 +181,12 @@ fun CardKader(kader: DataKader, onItemClick: () -> Unit) {
             .padding(vertical = 6.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp) // Efek Shadow
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Simbol Avatar Inisial
             Surface(
                 modifier = Modifier.size(45.dp),
                 shape = RoundedCornerShape(8.dp),
@@ -218,7 +219,6 @@ fun CardKader(kader: DataKader, onItemClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Label Prodi yang Lebih Rapi
                 Surface(
                     color = Color(0xFFB71C1C),
                     shape = RoundedCornerShape(4.dp)
@@ -233,23 +233,19 @@ fun CardKader(kader: DataKader, onItemClick: () -> Unit) {
                 }
             }
 
-            // Status dan Navigasi di pojok kanan kartu
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Ikon panah penunjuk
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = Color(0xFFB71C1C) // Diubah ke merah agar lebih jelas
+                    tint = Color(0xFFB71C1C)
                 )
-
-                // REVISI: Mengubah tulisan status yang terpotong menjadi "Detail Kader"
                 Text(
                     text = "Detail",
                     fontSize = 10.sp,
-                    color = Color(0xFFB71C1C), // Menggunakan warna merah maroon
+                    color = Color(0xFFB71C1C),
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.End
                 )

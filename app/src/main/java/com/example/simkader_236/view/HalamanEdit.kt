@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.simkader_236.viewmodel.EditViewModel
 import com.example.simkader_236.viewmodel.provider.PenyediaViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,48 @@ fun HalamanEdit(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val warnaUtama = Color(0xFFB71C1C)
+
+    // --- STATE UNTUK DIALOG (POP-UP) ---
+    var showUpdateSuccessDialog by remember { mutableStateOf(false) }
+    var showUpdateErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    // 1. POP-UP BERHASIL UPDATE (Gaya AlertDialog)
+    if (showUpdateSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Tidak bisa ditutup sembarang */ },
+            title = { Text("Update Berhasil", fontWeight = FontWeight.Bold) },
+            text = { Text("Data kader telah berhasil diperbarui di dalam sistem SIM-KADER.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showUpdateSuccessDialog = false
+                        navigateBack() // Kembali ke halaman list kader
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = warnaUtama)
+                ) {
+                    Text("OK", color = Color.White)
+                }
+            }
+        )
+    }
+
+    // 2. POP-UP GAGAL UPDATE (Gaya AlertDialog)
+    if (showUpdateErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showUpdateErrorDialog = false },
+            title = { Text("Gagal Update", fontWeight = FontWeight.Bold, color = warnaUtama) },
+            text = { Text(errorMessage) },
+            confirmButton = {
+                Button(
+                    onClick = { showUpdateErrorDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = warnaUtama)
+                ) {
+                    Text("Mengerti", color = Color.White)
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -75,16 +118,16 @@ fun HalamanEdit(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Input NIM (Read Only karena biasanya NIM adalah primary key/ID unik)
+                    // --- REVISI: NIM SEKARANG BISA DIUBAH ---
                     OutlinedTextField(
                         value = viewModel.kaderUiState.detailKader.nim,
-                        onValueChange = {},
-                        label = { Text("NIM (Tidak dapat diubah)") },
-                        leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null, tint = Color.Gray) },
+                        onValueChange = { viewModel.updateUiState(viewModel.kaderUiState.detailKader.copy(nim = it)) },
+                        label = { Text("NIM") },
+                        leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null, tint = warnaUtama) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        readOnly = true,
-                        colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color(0xFFF5F5F5), unfocusedContainerColor = Color(0xFFF5F5F5))
+                        readOnly = false, // Diubah agar bisa diedit
+                        enabled = true
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -126,9 +169,21 @@ fun HalamanEdit(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Tombol Update
+                    // --- REVISI: TOMBOL UPDATE DENGAN ALERT DIALOG ---
                     Button(
-                        onClick = { viewModel.updateKader(navigateBack) },
+                        onClick = {
+                            viewModel.updateKader(
+                                onSuccess = {
+                                    showUpdateSuccessDialog = true // Pemicu dialog berhasil
+                                },
+                                onShowMessage = { pesan ->
+                                    if (!pesan.contains("berhasil", ignoreCase = true)) {
+                                        errorMessage = pesan
+                                        showUpdateErrorDialog = true // Pemicu dialog gagal/duplikasi
+                                    }
+                                }
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth().height(55.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = warnaUtama),

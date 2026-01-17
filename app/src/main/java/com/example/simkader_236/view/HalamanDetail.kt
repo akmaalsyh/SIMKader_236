@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.simkader_236.viewmodel.DetailUiState
 import com.example.simkader_236.viewmodel.DetailViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,28 +32,61 @@ fun HalamanDetail(
     onEditClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Memaksa pengambilan data terbaru setiap kali halaman profil dibuka
+    LaunchedEffect(Unit) {
+        viewModel.getKaderById()
+    }
+
     val uiState = viewModel.detailUiState
     val warnaUtama = Color(0xFFB71C1C)
+    val scope = rememberCoroutineScope()
 
-    // State untuk Dialog Konfirmasi
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showDeleteSuccessDialog by remember { mutableStateOf(false) }
 
-    if (showDeleteDialog) {
+    // Dialog Konfirmasi Hapus (Gaya Logout)
+    if (showDeleteConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { showDeleteConfirmDialog = false },
             title = { Text("Konfirmasi Hapus", fontWeight = FontWeight.Bold) },
-            text = { Text("Apakah Anda yakin ingin menghapus data kader ini?") },
+            text = { Text("Apakah Anda yakin ingin menghapus data kader ini secara permanen dari sistem?") },
             confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    viewModel.deleteKader(onSuccess = navigateBack)
-                }) {
-                    Text("Hapus", color = warnaUtama, fontWeight = FontWeight.Bold)
+                Button(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        viewModel.deleteKader(
+                            onSuccess = { showDeleteSuccessDialog = true },
+                            onShowMessage = { /* Handle error jika perlu */ }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = warnaUtama)
+                ) {
+                    Text("Hapus", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Batal")
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Batal", color = Color.Gray)
+                }
+            }
+        )
+    }
+
+    // Dialog Berhasil Hapus (Gaya Pop-up Sukses)
+    if (showDeleteSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Hapus Berhasil", fontWeight = FontWeight.Bold) },
+            text = { Text("Data kader telah berhasil dihapus dari sistem SIM-KADER.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteSuccessDialog = false
+                        navigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = warnaUtama)
+                ) {
+                    Text("OK", color = Color.White)
                 }
             }
         )
@@ -74,7 +107,7 @@ fun HalamanDetail(
         floatingActionButton = {
             if (role == "admin" && uiState is DetailUiState.Success) {
                 FloatingActionButton(
-                    onClick = { onEditClick(uiState.kader.id_kader) },
+                    onClick = { onEditClick(uiState.kader.id_kader.toInt()) },
                     containerColor = warnaUtama,
                     contentColor = Color.White,
                     shape = CircleShape
@@ -93,12 +126,11 @@ fun HalamanDetail(
         ) {
             when (uiState) {
                 is DetailUiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxSize().padding(top = 50.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = warnaUtama)
                     }
                 }
                 is DetailUiState.Success -> {
-                    // Header Section
                     Box(
                         modifier = Modifier.fillMaxWidth().height(180.dp)
                             .background(Brush.verticalGradient(listOf(warnaUtama, Color(0xFFD32F2F)))),
@@ -117,15 +149,14 @@ fun HalamanDetail(
                         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
                     ) {
                         Column(modifier = Modifier.padding(all = 20.dp)) {
-                            // 1. Pastikan nama fungsi adalah DetailItemRow (satu 'l')
                             DetailItemRow(label = "NIM", value = uiState.kader.nim, icon = Icons.Default.Badge)
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
                             DetailItemRow(label = "Program Studi", value = uiState.kader.prodi, icon = Icons.Default.School)
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-                            // 2. Tambahkan .toString() pada angkatan agar tidak error
-                            DetailItemRow(label = "Angkatan", value = uiState.kader.angkatan.toString(), icon = Icons.Default.DateRange)
+                            // REVISI: Sekarang bisa menerima Int dari database tanpa error
+                            DetailItemRow(label = "Angkatan", value = uiState.kader.angkatan, icon = Icons.Default.DateRange)
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
                             DetailItemRow(label = "Status Perkaderan", value = uiState.kader.status, icon = Icons.Default.Stars)
@@ -134,7 +165,7 @@ fun HalamanDetail(
 
                     if (role == "admin") {
                         OutlinedButton(
-                            onClick = { showDeleteDialog = true },
+                            onClick = { showDeleteConfirmDialog = true },
                             modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = warnaUtama),
                             shape = RoundedCornerShape(12.dp)
@@ -143,23 +174,29 @@ fun HalamanDetail(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Hapus Data Kader")
                         }
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
-                is DetailUiState.Error -> { /* Handle Error */ }
+                is DetailUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Gagal memuat profil kader", color = Color.Gray)
+                    }
+                }
             }
         }
     }
 }
 
-// --- PASTIKAN FUNGSI DI BAWAH INI TERTULIS DENGAN BENAR DI PALING BAWAH FILE ---
+// REVISI: Mengubah tipe parameter 'value' menjadi 'Any' agar mendukung Int dan String
 @Composable
-fun DetailItemRow(label: String, value: String, icon: ImageVector) {
+fun DetailItemRow(label: String, value: Any, icon: ImageVector) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(imageVector = icon, contentDescription = null, tint = Color(0xFFB71C1C), modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(text = label, fontSize = 12.sp, color = Color.Gray)
-            Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            // .toString() di sini memastikan data apa pun bisa ditampilkan sebagai teks
+            Text(text = value.toString(), fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

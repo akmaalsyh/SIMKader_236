@@ -10,12 +10,9 @@ import com.example.simkader_236.modeldata.DataKader
 import com.example.simkader_236.repositori.RepositoriDataKader
 import com.example.simkader_236.uicontroller.route.DestinasiDetail
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
-import java.io.IOException
 
-// Status UI khusus untuk halaman Detail
 sealed interface DetailUiState {
-    data class Success(val kader: DataKader) : DetailUiState // REVISI: Nama variabel 'kader' agar cocok dengan View
+    data class Success(val kader: DataKader) : DetailUiState
     object Error : DetailUiState
     object Loading : DetailUiState
 }
@@ -34,28 +31,32 @@ class DetailViewModel(
         getKaderById()
     }
 
+    // Fungsi ini akan dipanggil setiap kali halaman detail muncul (on-resume)
     fun getKaderById() {
         viewModelScope.launch {
             detailUiState = DetailUiState.Loading
-            detailUiState = try {
+            try {
                 val kader = repositoriDataKader.getSatuKader(kaderId)
-                DetailUiState.Success(kader)
+                detailUiState = DetailUiState.Success(kader)
             } catch (e: Exception) {
-                DetailUiState.Error
+                detailUiState = DetailUiState.Error
             }
         }
     }
 
-    // REVISI: Menggunakan viewModelScope dan callback onSuccess agar navigasi sinkron
-    fun deleteKader(onSuccess: () -> Unit) {
+    // Menambah onShowMessage agar konsisten dengan Entry & Edit
+    fun deleteKader(onSuccess: () -> Unit, onShowMessage: (String) -> Unit) {
         viewModelScope.launch {
             try {
                 val response = repositoriDataKader.hapusSatuKader(kaderId)
                 if (response.isSuccessful) {
-                    onSuccess() // Navigasi kembali setelah hapus sukses
+                    onShowMessage("Data kader berhasil dihapus")
+                    onSuccess()
+                } else {
+                    onShowMessage("Gagal menghapus data dari server")
                 }
             } catch (e: Exception) {
-                // Handle error silakan tambah Toast jika perlu
+                onShowMessage("Kesalahan Jaringan: ${e.message}")
             }
         }
     }

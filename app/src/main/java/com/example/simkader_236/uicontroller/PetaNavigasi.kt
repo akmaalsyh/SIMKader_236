@@ -24,17 +24,16 @@ fun SIMKaderApp(
 @Composable
 fun PetaNavigasi(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()) {
-
-    // Simpan state user agar bisa digunakan di berbagai halaman
+    navController: NavHostController = rememberNavController()
+) {
+    // REVISI: Ganti nama state agar jelas bahwa ini adalah NAMA LENGKAP dari database
     var userRole by remember { mutableStateOf("user") }
-    var userName by remember { mutableStateOf("") }
+    var namaLengkapUser by remember { mutableStateOf("") }
 
     NavHost(
         navController = navController,
         startDestination = "splash"
     ) {
-        // 1. SPLASH SCREEN
         composable("splash") {
             HalamanSplash(
                 onTimeout = {
@@ -45,12 +44,13 @@ fun PetaNavigasi(
             )
         }
 
-        // 2. LOGIN
         composable("login") {
             HalamanLogin(
-                onLoginSuccess = { role, name -> // Sesuaikan parameter untuk menerima nama
+                onLoginSuccess = { role, nama ->
+                    // REVISI: Simpan data nama (dari kolom nama di DB) ke state navigasi
                     userRole = role
-                    userName = name ?: "Kader IMM" // Jika nama kosong, gunakan default
+                    namaLengkapUser = nama ?: "Kader IMM"
+
                     navController.navigate(DestinasiHome.route) {
                         popUpTo("login") { inclusive = true }
                     }
@@ -59,7 +59,6 @@ fun PetaNavigasi(
             )
         }
 
-        // 3. REGISTER
         composable("register") {
             HalamanRegister(
                 onRegisterSuccess = {
@@ -71,13 +70,16 @@ fun PetaNavigasi(
             )
         }
 
-        // 4. DASHBOARD UTAMA (REVISI: Menambah Parameter username)
         composable(route = DestinasiHome.route) {
             HalamanHome(
                 role = userRole,
-                username = userName, // KIRIM DATA USERNAME DISINI
+                // REVISI: Kirim namaLengkapUser ke Dashboard
+                username = namaLengkapUser,
                 onAddClick = { navController.navigate(DestinasiEntry.route) },
                 onLogoutClick = {
+                    // Reset data saat logout
+                    userRole = "user"
+                    namaLengkapUser = ""
                     navController.navigate("login") {
                         popUpTo(DestinasiHome.route) { inclusive = true }
                     }
@@ -89,22 +91,17 @@ fun PetaNavigasi(
             )
         }
 
-        // 5. HALAMAN LIST KADER
+        // --- Sisanya tetap sama ---
         composable("list_kader") {
             HalamanListKader(
                 role = userRole,
-                onDetailClick = { id ->
-                    navController.navigate("${DestinasiDetail.route}/$id")
-                },
-                onAddClick = {
-                    navController.navigate(DestinasiEntry.route)
-                },
+                onDetailClick = { id -> navController.navigate("${DestinasiDetail.route}/$id") },
+                onAddClick = { navController.navigate(DestinasiEntry.route) },
                 navigateBack = { navController.popBackStack() },
                 viewModel = viewModel(factory = PenyediaViewModel.Factory)
             )
         }
 
-        // 6. HALAMAN GRAFIK KADER
         composable("grafik_kader") {
             HalamanGrafikKader(
                 navigateBack = { navController.popBackStack() },
@@ -112,7 +109,6 @@ fun PetaNavigasi(
             )
         }
 
-        // 7. ENTRY DATA (ADMIN ONLY)
         composable(DestinasiEntry.route) {
             if (userRole == "admin") {
                 HalamanEntry(
@@ -125,12 +121,9 @@ fun PetaNavigasi(
             }
         }
 
-        // 8. DETAIL DATA
         composable(
             route = DestinasiDetail.routeWithArgs,
-            arguments = listOf(navArgument(DestinasiDetail.kaderIdArg) {
-                type = NavType.IntType
-            })
+            arguments = listOf(navArgument(DestinasiDetail.kaderIdArg) { type = NavType.IntType })
         ) {
             HalamanDetail(
                 role = userRole,
@@ -144,12 +137,9 @@ fun PetaNavigasi(
             )
         }
 
-        // 9. EDIT DATA (ADMIN ONLY)
         composable(
             route = DestinasiEdit.routeWithArgs,
-            arguments = listOf(navArgument(DestinasiEdit.kaderIdArg) {
-                type = NavType.IntType
-            })
+            arguments = listOf(navArgument(DestinasiEdit.kaderIdArg) { type = NavType.IntType })
         ) {
             if (userRole == "admin") {
                 HalamanEdit(

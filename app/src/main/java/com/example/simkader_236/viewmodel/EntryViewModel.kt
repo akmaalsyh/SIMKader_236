@@ -10,24 +10,22 @@ import com.example.simkader_236.modeldata.UIStateKader
 import com.example.simkader_236.modeldata.toDataKader
 import com.example.simkader_236.repositori.RepositoriDataKader
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json // Tambahkan ini untuk membaca pesan error
 
 class EntryViewModel(
     private val repositoriDataKader: RepositoriDataKader
 ) : ViewModel() {
 
-    // Menyimpan state UI untuk form input kader
     var uiStateKader by mutableStateOf(UIStateKader())
         private set
 
-    // REVISI: Fungsi diperbarui agar lebih mudah menerima update per-kolom
     fun updateUiState(detailKader: DetailKader) {
         uiStateKader = UIStateKader(
             detailKader = detailKader,
-            isEntryValid = validasiInput(detailKader) // Validasi otomatis setiap ada perubahan
+            isEntryValid = validasiInput(detailKader)
         )
     }
 
-    // Fungsi validasi: Memastikan semua kolom wajib diisi
     private fun validasiInput(uiState: DetailKader = uiStateKader.detailKader): Boolean {
         return with(uiState) {
             nama.isNotBlank() && nim.isNotBlank() && prodi.isNotBlank() &&
@@ -35,24 +33,33 @@ class EntryViewModel(
         }
     }
 
-    // REVISI: Menggunakan viewModelScope agar proses simpan berjalan di background
-    fun simpanKader(onSuccess: () -> Unit) {
+    // REVISI: Tambahkan parameter onShowMessage untuk menampilkan Pop-up
+    fun simpanKader(onSuccess: () -> Unit, onShowMessage: (String) -> Unit) {
         if (validasiInput()) {
             viewModelScope.launch {
                 try {
-                    // Mengirim data ke Repositori
                     val response = repositoriDataKader.postDataKader(
                         uiStateKader.detailKader.toDataKader()
                     )
 
                     if (response.isSuccessful) {
-                        println("Sukses Tambah Data")
-                        onSuccess() // Navigasi kembali jika berhasil
+                        // Jika status 201 (Berhasil)
+                        onShowMessage("Data kader berhasil ditambahkan")
+                        onSuccess()
                     } else {
-                        println("Gagal tambah data: ${response.message()}")
+                        // Menangkap pesan duplikasi dari PHP (misal: "NIM sudah terdaftar")
+                        val errorJson = response.errorBody()?.string()
+                        val message = try {
+                            // Mencari kata setelah "message":" di dalam JSON error
+                            errorJson?.split("\"message\":\"")?.get(1)?.split("\"")?.get(0)
+                                ?: "Gagal: Terjadi duplikasi data"
+                        } catch (e: Exception) {
+                            "NIM atau Nama sudah digunakan"
+                        }
+                        onShowMessage(message)
                     }
                 } catch (e: Exception) {
-                    println("Terjadi Kesalahan: ${e.message}")
+                    onShowMessage("Kesalahan: ${e.message}")
                 }
             }
         }

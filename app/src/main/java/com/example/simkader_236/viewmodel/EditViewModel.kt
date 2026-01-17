@@ -21,7 +21,6 @@ class EditViewModel(
 
     private val kaderId: Int = checkNotNull(savedStateHandle[DestinasiEdit.kaderIdArg])
 
-    // REVISI: Nama variabel diubah jadi kaderUiState agar cocok dengan View
     var kaderUiState by mutableStateOf(UIStateKader())
         private set
 
@@ -29,7 +28,6 @@ class EditViewModel(
         viewModelScope.launch {
             try {
                 val kader = repositoriDataKader.getSatuKader(kaderId)
-                // Mengisi form dengan data lama dari database
                 kaderUiState = kader.toUIStateKader(isEntryValid = true)
             } catch (e: Exception) {
                 println("Error Ambil Data: ${e.message}")
@@ -37,7 +35,6 @@ class EditViewModel(
         }
     }
 
-    // Memperbarui state saat input berubah
     fun updateUiState(detailKader: DetailKader) {
         kaderUiState = UIStateKader(
             detailKader = detailKader,
@@ -52,8 +49,11 @@ class EditViewModel(
         }
     }
 
-    // REVISI: Nama fungsi jadi updateKader & pakai viewModelScope agar bisa navigasi
-    fun updateKader(onSuccess: () -> Unit) {
+    /**
+     * REVISI: Menambahkan parameter onShowMessage agar sinkron dengan HalamanEdit.kt
+     * Parameter ini bertugas mengirimkan pesan (Berhasil/Gagal) ke Pop-up
+     */
+    fun updateKader(onSuccess: () -> Unit, onShowMessage: (String) -> Unit) {
         if (validasiInput()) {
             viewModelScope.launch {
                 try {
@@ -63,13 +63,23 @@ class EditViewModel(
                     )
 
                     if (response.isSuccessful) {
-                        println("Update Sukses")
-                        onSuccess() // Menjalankan navigateBack dari View
+                        // Jika PHP mengirim status 200/201
+                        onShowMessage("Data kader berhasil diperbarui")
+                        onSuccess()
                     } else {
-                        println("Update Gagal: ${response.message()}")
+                        // Menangkap pesan error dari PHP (misal: NIM sudah ada)
+                        val errorJson = response.errorBody()?.string()
+                        val message = try {
+                            // Mencoba mengambil pesan teks di antara tanda kutip "message":"..."
+                            errorJson?.split("\"message\":\"")?.get(1)?.split("\"")?.get(0)
+                                ?: "Gagal memperbarui data"
+                        } catch (e: Exception) {
+                            "NIM atau Nama sudah digunakan kader lain"
+                        }
+                        onShowMessage(message)
                     }
                 } catch (e: Exception) {
-                    println("Error: ${e.message}")
+                    onShowMessage("Terjadi kesalahan jaringan: ${e.message}")
                 }
             }
         }
